@@ -723,12 +723,13 @@ class Parse80211:
                     parsedFrame["wepbit"] = self.wepbit
                     # strip the headers
                     parsedFrame['rtap'] = self.rt
-                    # get the rssi from rtap data
+                    # get the rssi and tsamp from rtap data
                     if self.rtapData == -1:
                         # truncated rtap, make rssi None
                         parsedFrame['rssi'] = None
                     else:
                         parsedFrame['rssi'] = self.rtapData[5]
+                        parsedFrame['rssi_ts'] = self.rtapData[0]
                     parsedFrame["raw"] = data
                 if ARP is True:
                     if stype == '\x08':
