@@ -59,6 +59,19 @@ class accessPoint:
         self.twofourghzChannels = range(1, 15) # 2.4ghz channel list
         self.bcast = False          # used for airdrop, bcast kick packets are not allowed by default
         self._pcounter = 0
+        self.wifi_direct = False    # mark an AP as a wifi direct ap
+        self.wd_listen_channel = None  # listen channel for wifi direct
+        self.wd_channel = None         # channel for wifi direct
+
+    def return_wifi_direct(self):
+        """
+        Returns a dict containing all data on wifi direct ap
+        """
+        if self.wifi_direct is True:
+            return {"listen_channel": self.wd_listen_channel,
+                    "direct_channel": self.wd_channel}
+        else:
+            raise Exception("Not Wifi Direct AP")
 
     def update_packet_counter(self):
         """
