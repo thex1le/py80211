@@ -413,6 +413,23 @@ class IeTag80211:
                    if vendor_OUI_stype == 3:
                         # aruba does ap hostname this way
                         self.tagdata["APhostname"] = rbytes[7:]
+            if vendor_OUI == "\x50\x6f\x9a":
+                # WifiAll <- wifi direct
+                if vendor_OUI_type == 9:
+                    # p2p_capability
+                    p2p_attribute_type = ord(rbytes[6])
+                    p2p_attribute_len = struct.unpack('h', rbytes[7:9])[0]
+                    p2p_device_capability_bitmap = rbytes[9]
+                    p2p_group_capability_bitmap = rbytes[10]
+                    p2p_listen_channel = ord(rbytes[11])
+                    p2p_listen_channel_len = ord(rbytes[12])
+                    p2p_left_over = rbytes[13:]
+                    p2p_channel_number = ord(p2p_left_over[-1])
+                    p2p_operating_class = ord(p2p_left_over[-2])
+                    p2p_country_string = p2p_left_over[:-2]
+                    self.tagdata["wifi_direct"] = {
+                        "channel_num": p2p_channel_number,
+                        "listen_num": p2p_listen_channel}
         except IndexError:
             # mangled packets
             return -1
