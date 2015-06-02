@@ -543,6 +543,7 @@ class Airview(threading.Thread):
                 ap_object.channel = frame["channel"]
                 # rates
                 extended = frame["extended"]
+                # try accept is faster then membership testing
                 try:
                     ap_object.updaterates(extended["exrates"])
                 except KeyError:
@@ -580,23 +581,50 @@ class Airview(threading.Thread):
                 self.processData(frame)
             
             elif frame["type"] == 0 and frame["stype"] in [4]:
-                # probes parsing
-                # update client list
+                # probe request parsing
                 self.processData(frame)
                 # process probe for essid
-                src = frame["src"]
-                essid = frame["essid"]
-                if src not in self.clientObjects.keys(): 
-                    self.clientObjects[clientmac] = client(src)
-                client_obj = self.clientObjects[src]
-                # update client packet counter
-                client_obj.update_packet_counter()
-                client_obj.rssi = frame['rssi']
-                client_obj.updateProbes(essid)
-                if client_obj.bssid is None:
-                    client_obj.updateBssid("Not Assoicated")
-                client_obj.managedFrame = True
-                client_obj.lts = time.time()
+                # wifi direct
+                extended = frame["extended"]
+                # should fail out here if direct was not found
+                if "wifi_direct" in extended:
+                    # wifi direct probe request
+                    wifi_direct = extended["wifi_direct"]
+                    ap_object = None
+                    # bssid is a broadcast in this case
+                    #use src instead
+                    src = frame["src"]
+                    # grab the AP object or create it if it doesnt exist
+                    if src not in self.apObjects.keys():
+                        # create new object
+                        self.apObjects[src] = accessPoint(src)
+                    ap_object = self.apObjects[src]
+                    # update packet count
+                    ap_object.update_packet_counter()
+                    # populate rssi
+                    ap_object.rssi = frame["rssi"]
+                    # update essid
+                    ap_object.updateEssid(frame["essid"])
+                    # update ap encryption
+                    ap_object.wifi_direct = True
+                    # update channels
+                    ap_object.wd_listen_channel = wifi_direct["listen_num"]
+                    ap_object.channel = wifi_direct["listen_num"]
+                    ap_object.wd_channel = wifi_direct["channel_num"]
+                else:
+                    src = frame["src"]
+                    essid = frame["essid"]
+                    if src not in self.clientObjects.keys():
+                        self.clientObjects[src] = client(src)
+                    client_obj = self.clientObjects[src]
+                    # update client packet counter
+                    client_obj.update_packet_counter()
+                    client_obj.rssi = frame['rssi']
+                    client_obj.updateProbes(essid)
+                    if client_obj.bssid is None:
+                        client_obj.updateBssid("Not Assoicated")
+                    client_obj.managedFrame = True
+                    client_obj.lts = time.time()
 
             elif frame["type"] == 0 and frame["stype"] in [10,12]:
                 # deauth/disassoicate
