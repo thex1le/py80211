@@ -638,7 +638,7 @@ class IeTag80211:
             rsn["akm"] = akm
             rsn["capabil"] = capabil
             self.tagdata["rsn"] = rsn
-        except IndexError:
+        except Exception:
             # mangled packets
             return -1
 
@@ -830,12 +830,17 @@ class Parse80211:
                     parsedFrame["wepbit"] = self.wepbit
                     # strip the headers
                     parsedFrame['rtap'] = self.rt
-                    # get the rssi from rtap data
+                    # get the rssi and tsamp from rtap data
                     if self.rtapData == -1:
                         # truncated rtap, make rssi None
                         parsedFrame['rssi'] = None
                     else:
                         parsedFrame['rssi'] = self.rtapData[5]
+                        try:
+                            parsedFrame['rssi_ts'] = self.rtapData[0]
+                        except KeyError:
+                            # no time stamp found
+                            parsedFrame['rssi_ts'] = None
                     parsedFrame["raw"] = data
                 if ARP is True:
                     if stype == '\x08':

@@ -533,6 +533,8 @@ class Airview(threading.Thread):
                 ap_object.update_packet_counter()
                 # populate rssi
                 ap_object.rssi = frame["rssi"]
+                # update ap rtap timestamp
+                ap_object.rssi_ts = frame["rssi_ts"]
                 # update essid
                 ap_object.updateEssid(essid)
                 # update ap encryption

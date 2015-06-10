@@ -32,6 +32,7 @@ class accessPoint:
         # set first time seen
         self.fts = time.time()      # first time object is seen
         self.lts = None             # last time object is seen, update on every acccess
+        self.rssi_ts = None         # last time stamp recorded from card, via rtap data in microseconds
         self.name = "accessPoint"   # object type
         self.hostname = None        # device hostname as reported by AP (not all vendors support)
         self.connectedClients = []  # list of connected clients
