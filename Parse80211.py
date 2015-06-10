@@ -288,31 +288,34 @@ class IeTag80211:
             "\x85": self.ccxOne,    # Cisco CCX v1 Parser
             }
     
-    def ccxOne(self, rbytes):
+    def ccxOne(self, **kwargs):
         """
         Parse ap hostname and number of clients
         from cisco CCX v1 IE tag
         """
+        rbytes = kwargs["rbytes"]
         self.tagdata["APhostname"] = str(rbytes[12:-4])
         self.tagdata["ClientNum"] = ord(rbytes[-1])
 
-    def country(self, rbytes):
+    def country(self, **kwargs):
         """
         Return Country Code from beacon packet
         """
+        rbytes = kwargs["rbytes"]
         self.tagdata["country"] = str(rbytes[2:4])
 
-    def htinfo(self, rbytes):
+    def htinfo(self, **kwargs):
         """
         Check for existance of HT tag to denote support
         For 802.11N Mark its existance true for mgt frame
         save the reported HT primary channel
         """
+        rbytes = kwargs["rbytes"]
         self.tagdata["htPresent"] = True
         # reported primary channel
         self.tagdata["htPriCH"] = ord(rbytes[2])
 
-    def vendor221(self, rbytes):
+    def vendor221(self, **kwargs):
         """
         Parse the wpa IE tag 221 aka \xDD
         returns wpa info in nested dict
@@ -320,6 +323,8 @@ class IeTag80211:
         akm is auth key managment, ie either wpa, psk ....
         ptkcs is pairwise temportal cipher suite
         """
+        rbytes = kwargs.get("rbytes")
+        p2p_type = kwargs.get("p2p_type", None)
         wpa = {}
         ptkcs = []
         akm = []
@@ -415,7 +420,52 @@ class IeTag80211:
                         self.tagdata["APhostname"] = rbytes[7:]
             if vendor_OUI == "\x50\x6f\x9a":
                 # WifiAll <- wifi direct
-                if vendor_OUI_type == 9:
+                p2p_type = kwargs.pop("p2p_type", None)
+                if p2p_type is not None:
+                    # action packet p2p parser
+                    if p2p_type in [0, 1]:
+                        # go request parser
+                        p2p_go_status = rbytes[6:11]
+                        p2p_device_capability = rbytes[11:16]
+                        p2p_go_owner_intent = ord(rbytes[16])
+                        p2p_go_owner_len = ord(rbytes[17])
+                        cnt = 17 + p2p_go_owner_len
+                        p2p_go_owner_intent_go_num = ord(rbytes[17:cnt]) >> 1
+                        p2p_go_owner_intent_go_tie_breaker = ord(
+                            rbytes[17:cnt]) & 1
+                        # skipping acutal parse of this for now
+                        p2p_config_timeout = rbytes[cnt: cnt+5]
+                        # skip listen channel for now, its not as useful
+                        cnt += 5
+                        p2p_go_listen_channel = rbytes[cnt: cnt+9]
+                        # intended bssid parsing
+                        cnt += 11
+                        p2p_go_intented_p2p_addr = rbytes[cnt: cnt+7]
+                        # TODO Finish Channel parsing as we still dont know how it signals which one it picked
+                        if p2p_type is 0:
+                            self.tagdata["wifi_direct"] = {
+                                "channel_num_go_request": None,
+                                "p2p_bssid_go_request": p2p_go_intented_p2p_addr,
+                                 "p2p_type": p2p_type}
+                        elif p2p_type is 1:
+                            self.tagdata["wifi_direct"] = {
+                                "channel_num_go_response": None,
+                                "p2p_bssid_go_response": p2p_go_intented_p2p_addr,
+                                "p2p_type": p2p_type}
+                elif p2p_type ==3:
+                    p2p_go_status = rbytes[6:11]
+                    p2p_device_capability = rbytes[11:16]
+                    p2p_operating_channel = rbytes[16:24]
+                    p2p_channel_list = rbytes[24:56]
+                    # parse the essid of new direct network
+                    len = ord(rbytes[57])
+                    p2p_ssid = rbytes[58: 58+len()]
+                    self.tagdata["wifi_direct"] = {
+                        "direct_ssid": p2p_ssid,
+                        "p2p_type": p2p_type}
+                # generic parser for p2p data in probe request
+                # will most likely fail on probe response
+                elif vendor_OUI_type == 9:
                     # p2p_capability
                     p2p_attribute_type = ord(rbytes[6])
                     p2p_attribute_len = struct.unpack('h', rbytes[7:9])[0]
@@ -434,13 +484,14 @@ class IeTag80211:
             # mangled packets
             return -1
 
-    def parseIE(self, rbytes):
+    def parseIE(self, **kwargs):
         """
         takes string of raw bytes splits them into tags
         passes those tags to the correct parser
         retruns parsed tags as a dict, key is tag number
         rbytes = string of bytes to parse
         """
+        rbytes = kwargs.pop("rbytes")
         self.tagdata = {"unparsed":[]}  # dict to return parsed tags
         offsets = {}
         while len(rbytes) > 0:
@@ -451,7 +502,10 @@ class IeTag80211:
                 if fbyte in self.parser.keys():
                     prebytes = rbytes[0:blen]
                     if blen == len(prebytes):
-                        self.parser[fbyte](prebytes)
+                        # use kwargs to pass though args to sub parsers
+                        ie_args = kwargs.copy()
+                        ie_args["rbytes"] = prebytes
+                        self.parser[fbyte](**ie_args)
                     else:
                         # mangled packets
                         return -1
@@ -463,47 +517,51 @@ class IeTag80211:
                 # mangled packets
                 return -1
        
-    def exrates(self, rbytes):
+    def exrates(self, **kwargs):
         """
         parses extended supported rates
         exrates IE tag number is 0x32
         retruns exrates in a list
         """
+        rbytes = kwargs.get("rbytes")
         exrates = []
         for exrate in tuple(rbytes[2:]):
             exrates.append((ord(exrate) & 127) * 0.5)
         self.tagdata["exrates"] = exrates
 
-    def channel(self, rbytes):
+    def channel(self, **kwargs):
         """
         parses channel
         channel IE tag number is 0x03
         returns channel as int
         last byte is channel
         """
+        rbytes = kwargs["rbytes"]
         self.tagdata["channel"] = ord(rbytes[2])
 
-    def ssid(self, rbytes):
+    def ssid(self, **kwargs):
         """
         parses ssid IE tag
         ssid IE tag number is 0x00
         returns the ssid as a string
         """
         # how do we handle hidden ssids?
+        rbytes = kwargs.get("rbytes")
         self.tagdata["ssid"] = unicode(rbytes[2:], errors='replace')
 
-    def rates(self, rbytes):
+    def rates(self, **kwargs):
         """
         parses rates from ie tag
         rates IE tag number is 0x01
         returns rates as in a list
         """
+        rbytes = kwargs.get("rbytes")
         rates = []
         for rate in tuple(rbytes[2:]):
             rates.append((ord(rate) & 127) * 0.5)
         self.tagdata["rates"] = rates
 
-    def rsn(self, rbytes):
+    def rsn(self, **kwargs):
         """
         parses robust security network ie tag
         rsn ie tag number is 0x30
@@ -512,6 +570,7 @@ class IeTag80211:
         akm is auth key managment, ie either wpa, psk ....
         ptkcs is pairwise temportal cipher suite
         """
+        rbytes = kwargs.get("rbytes")
         rsn = {}
         ptkcs = []
         akm = []
@@ -615,6 +674,7 @@ class Parse80211:
             10: self.deauthDisass,  # disassoication
             11: self.placedef,  # authentication
             12: self.deauthDisass,  # deauthentication
+            13: self.action     # action frame
             }, 1: {},  # control frames
             2: {  # data frames
              0: self.fdata,  # data
@@ -663,7 +723,37 @@ class Parse80211:
             5700: 140, 5745: 149, 5765: 153,
             5785: 157, 5805: 161, 5825: 165
             }
-    
+
+
+    def action(self, data):
+        """
+        Action frame
+        """
+        cat_code = ord(data[0])
+        if cat_code == 4:
+            # public action
+            public_action = ord(data[1])
+            if public_action == 9:
+                # vendor specific
+                oui = data[2:4]
+                if oui == "\x50\x6f\x9a":
+                    subtype = data[4]
+                    if subtype == 9:
+                        p2p_action_subtype = data[5]
+                        p2p_action_dialog_token = data[6]
+                        """
+                        action subtype 0 is go request
+                        action subtype 1 is go response
+                        action subtype 2 is go conformation
+                        action subtype 3 is go
+                        """
+                        action_args = {"rbytes": data[7:],
+                                       "p2p_type": p2p_action_subtype}
+                        self.IE.parseIE(**action_args)
+
+        # if checks failed out, return none
+        return None
+
     def isBcast(self, mac):
         """
         returns boolen if mac is a broadcast/multicast mac
@@ -806,7 +896,8 @@ class Parse80211:
             # parse the IE tags
             # possible bug, no fixed 12 byte paramaters before ie tags?
             # these seem to have it...
-            self.IE.parseIE(data[36:])
+            ie_args = {"rbytes": data[36:]}
+            self.IE.parseIE(**ie_args)
             if "ssid" not in self.IE.tagdata.keys():
                 self.mangled = True
                 self.mangledcount += 1
@@ -840,7 +931,8 @@ class Parse80211:
             bssid = data[16:22]  # bssid addr 6 bytes
             # parse the IE tags
             # possible bug, no fixed 12 byte paramaters before ie tags?
-            self.IE.parseIE(data[24:])
+            ie_args = {"rbytes": data[24:]}
+            self.IE.parseIE(**ie_args)
             if "ssid" not in self.IE.tagdata.keys():
                 self.mangled = True
                 self.mangledcount += 1
@@ -899,7 +991,8 @@ class Parse80211:
             try:
                 if (struct.unpack('h', data[34:36])[0] & 16):
                     beaconWepBit = True
-                self.IE.parseIE(data[36:])
+                ie_args = {"rbytes": data[36:]}
+                self.IE.parseIE(**ie_args)
             except:
                 # mangled packet
                 self.mangled = True

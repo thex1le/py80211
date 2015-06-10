@@ -48,8 +48,8 @@ class iface80211(threading.Thread):
         # create a dict with interface name and context
         try:
             self.moniface = {"ctx":PyLorcon2.Context(interface)}
-        except PyLorcon2.Lorcon2Exception,e:
-            print "%s is the %s interface there?" %(e, interface)
+        except PyLorcon2.Lorcon2Exception as e:
+            print("%s is the %s interface there?" %(e, interface))
             sys.exit(-1)
         # place cards in injection/monitor mode
         self.moniface["ctx"].open_injmon()
@@ -79,8 +79,8 @@ class iface80211(threading.Thread):
         try:
             self.lp = pcap.pcapObject()
         except AttributeError:
-            print "You have the wrong pypcap installed"
-            print "Use https://github.com/signed0/pylibpcap.git"
+            print("You have the wrong pypcap installed")
+            print("Use https://github.com/signed0/pylibpcap.git")
         # check what these numbers mean
         self.lp.open_live(dev, 1600, 0 ,100)
         if filter is not None:
@@ -185,7 +185,7 @@ class ifaceTunnel(threading.Thread):
             # return interface name
             ifname = ifs[:16].strip("\x00")
             # commented out...  for now!
-            print "Interface %s created. Configure it and use it" % ifname
+            print("Interface %s created. Configure it and use it" % ifname)
             # put interface up
             os.system("ifconfig %s up" %(ifname))
             # return interface name
@@ -193,8 +193,8 @@ class ifaceTunnel(threading.Thread):
                 self.lp = pcap.pcapObject()
                 self.lp.open_live(ifname, 1526, 0 ,100)
             except AttributeError:
-                print "You have the wrong pypcap installed"
-                print "Use https://github.com/signed0/pylibpcap.git"
+                print("You have the wrong pypcap installed")
+                print("Use https://github.com/signed0/pylibpcap.git")
             return ifname
         else:
             return False
@@ -608,9 +608,17 @@ class Airview(threading.Thread):
                     # update ap encryption
                     ap_object.wifi_direct = True
                     # update channels
-                    ap_object.wd_listen_channel = wifi_direct["listen_num"]
-                    ap_object.channel = wifi_direct["listen_num"]
-                    ap_object.wd_channel = wifi_direct["channel_num"]
+                    ap_object.wd_listen_channel = wifi_direct.get("listen_num", None)
+                    ap_object.channel = wifi_direct.get("listen_num", None)
+                    ap_object.wd_channel = wifi_direct.get("channel_num", None)
+                    # update go info
+                    ap_object.direct_ssid = wifi_direct.get("direct_ssid", None)
+                    # right now store possible bssid's
+                    ap_object.direct_bssid_a = wifi_direct.get(
+                        "p2p_bssid_go_request", None)
+                    ap_object.direct_bssid_a = wifi_direct.get(
+                        "p2p_bssid_go_response", None)
+
                 else:
                     src = frame["src"]
                     essid = frame["essid"]

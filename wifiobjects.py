@@ -62,6 +62,9 @@ class accessPoint:
         self.wifi_direct = False    # mark an AP as a wifi direct ap
         self.wd_listen_channel = None  # listen channel for wifi direct
         self.wd_channel = None         # channel for wifi direct
+        self.direct_ssid = None        # wifi_direct SSID
+        self.direct_bssid_a = None      # one possible bssid
+        self.direct_bssid_b = None      # one possible bssid
 
     def return_wifi_direct(self):
         """
@@ -69,7 +72,10 @@ class accessPoint:
         """
         if self.wifi_direct is True:
             return {"listen_channel": self.wd_listen_channel,
-                    "direct_channel": self.wd_channel}
+                    "direct_channel": self.wd_channel,
+                    "direct_ssid": self.direct_ssid,
+                    "direct_bssid_a": self.direct_bssid_a,
+                    "direct_bssid_b": self.direct_bssid_b}
         else:
             raise Exception("Not Wifi Direct AP")
 

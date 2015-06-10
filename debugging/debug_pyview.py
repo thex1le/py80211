@@ -84,6 +84,8 @@ if __name__ == "__main__":
                 #import pdb
                 #pdb.set_trace()
                 if wifi_direct is True:
+                    import pdb
+                    pdb.set_trace()
                     wd_data = ap.return_wifi_direct()
                     wd_data_listen = wd_data["listen_channel"]
                     wd_data_channel = wd_data["direct_channel"]
