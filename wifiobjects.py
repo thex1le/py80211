@@ -188,6 +188,7 @@ class accessPoint:
             self.ssidList.pop(0)
         self.ssidList.append(essid)
             
+
 class client:
     """
     Client object

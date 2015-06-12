@@ -524,6 +524,7 @@ class Airview(threading.Thread):
                 ap_object = None
                 bssid = frame["bssid"]
                 essid = frame["essid"]
+                hidden = frame["hidden"]
                 # grab the AP object or create it if it doesnt exist
                 if bssid not in self.apObjects.keys():
                     # create new object
@@ -537,6 +538,7 @@ class Airview(threading.Thread):
                 ap_object.rssi_ts = frame["rssi_ts"]
                 # update essid
                 ap_object.updateEssid(essid)
+                ap_object.hidden = hidden
                 # update ap encryption
                 ap_object.encryption = frame["encryption"]
                 ap_object.auth = frame["auth"]

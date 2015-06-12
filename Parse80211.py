@@ -5,6 +5,16 @@ import struct
 from flufl.enum import IntEnum
 import pdb
 
+def nullstrip(dstring):
+    """
+    Returns string stopped at the first null character.
+    """
+    try:
+        dstring = dstring[:dstring.index('\x00')]
+    except ValueError:  # No nulls were found, which is okay.
+        pass
+    return dstring
+
 class RadioTapHeader(IntEnum) :
     VERSION = 0
     LENGTH = 1
@@ -294,8 +304,8 @@ class IeTag80211:
         from cisco CCX v1 IE tag
         """
         rbytes = kwargs["rbytes"]
-        self.tagdata["APhostname"] = str(rbytes[12:-4])
-        self.tagdata["ClientNum"] = ord(rbytes[-1])
+        self.tagdata["APhostname"] = nullstrip(str(rbytes[12:28]))
+        self.tagdata["ClientNum"] = ord(rbytes[28])
 
     def country(self, **kwargs):
         """
@@ -547,7 +557,14 @@ class IeTag80211:
         """
         # how do we handle hidden ssids?
         rbytes = kwargs.get("rbytes")
-        self.tagdata["ssid"] = unicode(rbytes[2:], errors='replace')
+        essid = unicode(rbytes[2:], errors='replace')
+        # check for a hidden ssid
+        if essid == '\x00' * len(essid):
+            self.tagdata["hidden"] = True
+            self.tagdata["ssid"] = ""
+        else:
+            self.tagdata["hidden"] = False
+            self.tagdata["ssid"] = essid
 
     def rates(self, **kwargs):
         """
@@ -1009,6 +1026,8 @@ class Parse80211:
                 return -1
             else:
                 essid = self.IE.tagdata["ssid"]
+                hidden = self.IE.tagdata["hidden"]
+
             channel = 0
             freq = 0
             # pull channel from radio tap
@@ -1081,5 +1100,5 @@ class Parse80211:
             return -1
         return {"bssid":bssid, "essid":essid, "src":src, "dst":dst, 
             "channel":channel, "extended":self.IE.tagdata, "ds":dsbits,
-            "encryption":encryption, "auth":authkey, "cipher":cipher}
+            "encryption":encryption, "auth":authkey, "cipher":cipher, "hidden": hidden}
 
