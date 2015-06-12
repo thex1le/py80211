@@ -114,7 +114,7 @@ class iface80211(threading.Thread):
         """
         try:
             return self.packetque.get(1, 1)
-        except Empty:
+        except:
             return None
     
     def quesize(self):
@@ -512,9 +512,13 @@ class Airview(threading.Thread):
         """
         while self.stop is False:
             self.channel = self.hopper.current
-            frame = self.rd.parseFrame(
-                        self.intf.getFrame())
-            
+            try:
+                frame = self.rd.parseFrame(
+                            self.intf.getFrame())
+            except:
+                if self.stop:
+                    return None
+                pass
             # beacon frames
             if frame == None:
                 # we cant parse the frame
@@ -658,6 +662,7 @@ class Airview(threading.Thread):
                         client_obj.lts = time.time()
                         if bssid in self.apObjects.keys():
                             self.apObjects[bssid].delClients(addy)
+        return None
 
     def run(self):
         """
