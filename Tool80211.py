@@ -269,6 +269,7 @@ class ChannelHop(threading.Thread):
         threading.Thread.daemon = True
         self.iface = interface
         self.HOPpause = False
+        self.stop = False
         # dwell for 3 time slices on 1 6 11
         # default is 3/10 of a second
         # got the lists from kismet config file
@@ -324,7 +325,7 @@ class ChannelHop(threading.Thread):
         """
         Hop channels
         """
-        while True:
+        while self.stop is False:
             for ch in self.hopList:
                 # hopping is paused though loop still runs
                 if self.HOPpause is True:
@@ -667,6 +668,7 @@ class Airview(threading.Thread):
         stop the parser
         """
         self.stop = True
+        self.hopper.stop = True
         self.hopper.join()
         self.intf.exit()
 
