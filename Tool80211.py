@@ -666,7 +666,7 @@ class Airview(threading.Thread):
         """
         stop the parser
         """
+        self.hopper.join()
         self.stop = True
-        time.sleep(1)
         self.intf.exit()
 
