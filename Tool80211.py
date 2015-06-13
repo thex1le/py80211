@@ -129,8 +129,11 @@ class iface80211(threading.Thread):
         """
         if not data:
             return
-        self.packetque.put((pktlen, data, tstamp))
-        
+        if self.stop is False:
+            self.packetque.put((pktlen, data, tstamp))
+        else:
+            return
+
     def startsniffer(self):
         """
         Start dispatch and fill up the queue
